@@ -15,12 +15,22 @@
  */
 package org.hibernate.bugs;
 
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.ParameterExpression;
+import jakarta.persistence.criteria.Root;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
+import org.hibernate.entity.CustomString;
+import org.hibernate.entity.TestEntity;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+
+import java.util.List;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using its built-in unit test framework.
@@ -36,19 +46,13 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 	// Add your entities here.
 	@Override
 	protected Class[] getAnnotatedClasses() {
-		return new Class[] {
-//				Foo.class,
-//				Bar.class
-		};
+		return new Class[] { TestEntity.class };
 	}
 
 	// If you use *.hbm.xml mappings, instead of annotations, add the mappings here.
 	@Override
 	protected String[] getMappings() {
-		return new String[] {
-//				"Foo.hbm.xml",
-//				"Bar.hbm.xml"
-		};
+		return new String[] {};
 	}
 	// If those mappings reside somewhere other than resources/org/hibernate/test, change this.
 	@Override
@@ -66,14 +70,102 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 		//configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
 	}
 
-	// Add your tests, using standard JUnit.
-	@Test
-	public void hhh123Test() throws Exception {
-		// BaseCoreFunctionalTestCase automatically creates the SessionFactory and provides the Session.
-		Session s = openSession();
-		Transaction tx = s.beginTransaction();
-		// Do stuff...
-		tx.commit();
-		s.close();
+	@Override
+	protected boolean isCleanupTestDataRequired() {
+		return true;
 	}
+
+	@Test
+	public void hhh17790Test_UserType_Like_Criteria_Literal() {
+		Session session = openSession();
+		Transaction tx = session.beginTransaction();
+
+		final TestEntity entity = new TestEntity();
+		entity.stringWithUserType = new CustomString("TestString");
+		session.persist(entity);
+
+		CriteriaBuilder cb = session.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cr = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cr.from(TestEntity.class);
+		cr.select(root);
+		cr.where(cb.or(cb.like(root.get("stringWithUserType"), "%Test%")));
+
+		TypedQuery<TestEntity> query = session.createQuery(cr);
+		List<TestEntity> results = query.getResultList();
+
+		Assertions.assertEquals(1, results.size());
+
+		tx.commit();
+		session.close();
+	}
+
+	@Test
+	public void hhh17790Test_UserType_Like_Criteria_Parameter() {
+		Session session = openSession();
+		Transaction tx = session.beginTransaction();
+
+		final TestEntity entity = new TestEntity();
+		entity.stringWithUserType = new CustomString("TestString");
+		session.persist(entity);
+
+		CriteriaBuilder cb = session.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cr = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cr.from(TestEntity.class);
+		cr.select(root);
+		ParameterExpression<String> param = cb.parameter(String.class);
+		cr.where(cb.like(root.get("stringWithUserType"), param));
+
+		TypedQuery<TestEntity> query = session.createQuery(cr);
+		query.setParameter(param, "%Test%");
+		List<TestEntity> results = query.getResultList();
+
+		Assertions.assertEquals(1, results.size());
+
+		tx.commit();
+		session.close();
+	}
+
+	@Test
+	public void hhh17790Test_UserType_Like_JPQL_Literal() {
+		Session session = openSession();
+		Transaction tx = session.beginTransaction();
+
+		final TestEntity entity = new TestEntity();
+		entity.stringWithUserType = new CustomString("TestString");
+		session.persist(entity);
+
+		final List<TestEntity> results = session.createQuery(
+						"select e from TestEntity e where e.stringWithUserType like '%Test%'",
+						TestEntity.class
+				)
+				.getResultList();
+
+		Assertions.assertEquals(1, results.size());
+
+		tx.commit();
+		session.close();
+	}
+
+	@Test
+	public void hhh17790Test_UserType_Like_JPQL_Parameter() {
+		Session session = openSession();
+		Transaction tx = session.beginTransaction();
+
+		final TestEntity entity = new TestEntity();
+		entity.stringWithUserType = new CustomString("TestString");
+		session.persist(entity);
+
+		final List<TestEntity> results = session.createQuery(
+						"select e from TestEntity e where e.stringWithUserType like :text",
+						TestEntity.class
+				)
+				.setParameter("text", "%Test%")
+				.getResultList();
+
+		Assertions.assertEquals(1, results.size());
+
+		tx.commit();
+		session.close();
+	}
+
 }

@@ -1,7 +1,8 @@
 package org.hibernate.entity;
 
-import jakarta.persistence.*;
 import org.hibernate.annotations.Type;
+
+import javax.persistence.*;
 
 @Entity
 public class TestEntity {
@@ -31,7 +32,7 @@ public class TestEntity {
     @Convert(converter = CustomStringConverter.class)
     public CustomString stringWithConverter;
 
-    @Type(CustomStringType.class)
+    @Type(type = "org.hibernate.entity.CustomStringType")
     public CustomString stringWithUserType;
 
     @Enumerated(EnumType.STRING)
