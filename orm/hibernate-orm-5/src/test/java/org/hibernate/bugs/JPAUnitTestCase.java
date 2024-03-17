@@ -1,12 +1,14 @@
 package org.hibernate.bugs;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
+import javax.persistence.*;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using the Java Persistence API.
@@ -31,8 +33,28 @@ public class JPAUnitTestCase {
 	public void hhh123Test() throws Exception {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();
-		// Do stuff...
+
+		MyEntity entity = new MyEntity();
+		entity.id = "E1";
+		entity.bValue = false;
+		entityManager.persist(entity);
+
+		TypedQuery<MyEntity> query = entityManager.createQuery("select e from MyEntity e where bValue = 0", MyEntity.class);
+		List<MyEntity> results = query.getResultList();
+		assertEquals(1, results.size());
+		
 		entityManager.getTransaction().commit();
 		entityManager.close();
+	}
+
+
+	@Entity(name = "MyEntity")
+	public static class MyEntity {
+
+		@Id
+		public String id;
+
+		@Column(columnDefinition = "tinyint not null")
+		boolean bValue;
 	}
 }
