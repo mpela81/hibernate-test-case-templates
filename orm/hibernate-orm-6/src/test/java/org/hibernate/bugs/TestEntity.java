@@ -1,19 +1,23 @@
 package org.hibernate.bugs;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 
-import java.util.List;
+import java.util.StringJoiner;
 
 @Entity(name = "ENTITY")
 public class TestEntity
 {
 	@Id
-	public String id;
+	@GeneratedValue
+	public Long id;
 
-	@OneToMany(mappedBy = "root", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-	public List<LinkedEntity> linkedEntities;
+	public String field;
+
+	@Override
+	public String toString()
+	{
+		return new StringJoiner(", ", TestEntity.class.getSimpleName() + "[", "]").add("id=" + id).add("field='" + field + "'").toString();
+	}
 }
