@@ -29,6 +29,7 @@
             <property name="hibernate.generate_statistics" value="true"/>
             <property name="hibernate.cache.use_second_level_cache" value="true"/>
             <property name="hibernate.cache.region.factory_class" value="jcache"/>
+            <!-- <property name="hibernate.javax.cache.provider" value="org.ehcache.jsr107.EhcacheCachingProvider"/> -->
             <property name="hibernate.javax.cache.uri" value="/ehcache-TEST.xml"/>
 
             <!--NOTE: hibernate.jdbc.batch_versioned_data should be set to false when testing with Oracle-->

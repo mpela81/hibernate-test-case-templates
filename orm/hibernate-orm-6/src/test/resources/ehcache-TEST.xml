@@ -1,8 +1,12 @@
-<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd">
-    <defaultCache maxElementsInMemory="10000" eternal="false"
-                  timeToIdleSeconds="120" timeToLiveSeconds="120" overflowToDisk="true"/>
-    <cache name="org.hibernate.bugs.TestEntity"
-           maxElementsInMemory="100" eternal="false"
-           timeToIdleSeconds="120" timeToLiveSeconds="120" overflowToDisk="false"/>
-</ehcache>
+
+<config xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'
+        xmlns='http://www.ehcache.org/v3'
+        xsi:schemaLocation="http://www.ehcache.org/v3 http://www.ehcache.org/schema/ehcache-core-3.0.xsd">
+    <cache alias="org.hibernate.bugs.TestEntity">
+        <key-type>java.lang.Object</key-type>
+        <value-type>java.lang.Object</value-type>
+        <resources>
+            <heap unit="entries">10000</heap>
+        </resources>
+    </cache>
+</config>
