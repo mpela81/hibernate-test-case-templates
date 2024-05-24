@@ -9,5 +9,7 @@ public class TestEntity {
     @Id
     public String id;
 
-    public String strField;
+    public String linkedId;
+
+    public Integer internalVersion;
 }
