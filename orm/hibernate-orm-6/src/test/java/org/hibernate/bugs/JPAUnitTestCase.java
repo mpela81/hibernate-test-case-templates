@@ -38,6 +38,32 @@ public class JPAUnitTestCase {
 	// Add your tests, using standard JUnit.
 	@Test
 	public void hhh123Test() throws Exception {
+		saveEntities();
+
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+		Root<TestEntity> outerRoot = cq.from(TestEntity.class);
+
+		Subquery<Integer> subquery = cq.subquery(Integer.class);
+		Root<TestEntity> subRoot = subquery.from(TestEntity.class);
+		subquery.select(cb.max(subRoot.get("internalVersion")))
+				.where(cb.equal(subRoot.get("id"), outerRoot.get("id")));
+
+		final Predicate[] predicates = new Predicate[2];
+		predicates[0] = cb.equal(outerRoot.get("linkedId"), "link1");
+		predicates[1] = cb.equal(outerRoot.get("internalVersion"), subquery);
+		cq.where(predicates);
+
+		TypedQuery<TestEntity> query = entityManager.createQuery(cq);
+		List<TestEntity> results = query.getResultList();
+		Assert.assertEquals(2, results.size());
+
+		entityManager.close();
+	}
+
+	private void saveEntities() {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();
 
@@ -60,25 +86,6 @@ public class JPAUnitTestCase {
 		entityManager.persist(entity3);
 
 		entityManager.getTransaction().commit();
-
-		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
-		Root<TestEntity> outerRoot = cq.from(TestEntity.class);
-
-		Subquery<Integer> subquery = cq.subquery(Integer.class);
-		Root<TestEntity> subRoot = subquery.from(TestEntity.class);
-		subquery.select(cb.max(subRoot.get("internalVersion")))
-				.where(cb.equal(subRoot.get("id"), outerRoot.get("id")));
-
-		final Predicate[] predicates = new Predicate[2];
-		predicates[0] = cb.equal(outerRoot.get("linkedId"), "link1");
-		predicates[1] = cb.equal(outerRoot.get("internalVersion"), subquery);
-		cq.where(predicates);
-
-		TypedQuery<TestEntity> query = entityManager.createQuery(cq);
-		List<TestEntity> results = query.getResultList();
-		Assert.assertEquals(2, results.size());
-
 		entityManager.close();
 	}
 
