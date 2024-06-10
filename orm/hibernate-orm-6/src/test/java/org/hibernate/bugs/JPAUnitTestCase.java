@@ -4,9 +4,16 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.List;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using the Java Persistence API.
@@ -29,6 +36,22 @@ public class JPAUnitTestCase {
 	// Add your tests, using standard JUnit.
 	@Test
 	public void hhh123Test() throws Exception {
+		prepareDatabase();
+
+		EntityManager entityManager = entityManagerFactory.createEntityManager();
+
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cq.from(TestEntity.class);
+		cq.where(cb.equal(root.get("id"), "ID1"));
+
+		List<TestEntity> results = entityManager.createQuery(cq).getResultList();
+		Assert.assertEquals(1, results.size());
+
+		entityManager.close();
+	}
+
+	private void prepareDatabase() {
 		EntityManager entityManager = entityManagerFactory.createEntityManager();
 		entityManager.getTransaction().begin();
 
