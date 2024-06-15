@@ -77,13 +77,35 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 		prepareDatabase();
 
 		try (Session s = openSession()) {
-			CriteriaBuilder cb = s.getCriteriaBuilder();
-			CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
-			Root<TestEntity> root = cq.from(TestEntity.class);
-			cq.where(cb.equal(root.get("id"), "ID1"));
+			Transaction tx = s.beginTransaction();
 
-			List<TestEntity> results = s.createQuery(cq).getResultList();
-			Assert.assertEquals(1, results.size());
+			{
+				System.out.println("Q1");
+				CriteriaBuilder cb = s.getCriteriaBuilder();
+				CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+				Root<TestEntity> root = cq.from(TestEntity.class);
+				cq.where(cb.equal(root.get("id"), "ID1"));
+
+				TestEntity e = s.createQuery(cq).setReadOnly(false).getSingleResult();
+				e.strField = "S1_UPD";
+				s.flush();
+			}
+
+
+			{
+				System.out.println("Q2");
+				CriteriaBuilder cb = s.getCriteriaBuilder();
+				CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+				Root<TestEntity> root = cq.from(TestEntity.class);
+				cq.where(cb.equal(root.get("id"), "ID2"));
+
+				TestEntity e = s.createQuery(cq).setReadOnly(true).getSingleResult();
+				e.strField = "s2_UPD";
+				s.flush();
+			}
+
+
+			tx.commit();
 		}
 	}
 
@@ -96,7 +118,12 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 			entity.strField = "S1";
 			s.persist(entity);
 
-			tx.commit();
+            TestEntity entity2 = new TestEntity();
+            entity2.id = "ID2";
+            entity2.strField = "S2";
+            s.persist(entity2);
+
+            tx.commit();
 		}
 	}
 }
