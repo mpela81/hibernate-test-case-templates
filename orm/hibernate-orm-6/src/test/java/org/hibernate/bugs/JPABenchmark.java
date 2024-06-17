@@ -1,5 +1,9 @@
 package org.hibernate.bugs;
 
+import jakarta.persistence.*;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -8,14 +12,9 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
-import jakarta.persistence.*;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-
-import java.util.List;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using the Java Persistence API.
@@ -31,12 +30,8 @@ public class JPABenchmark {
 
 		final EntityManager em = entityManagerFactory.createEntityManager();
 		em.getTransaction().begin();
-		em.createQuery("delete Book").executeUpdate();
-		em.createQuery("delete Author").executeUpdate();
-		em.createQuery("delete AuthorDetails").executeUpdate();
-		for (int i = 0; i < 1000; i++) {
-			populateData(em);
-		}
+		em.createQuery("delete TestEntity").executeUpdate();
+		populateData(em);
 		em.getTransaction().commit();
 		em.close();
 	}
@@ -47,40 +42,42 @@ public class JPABenchmark {
 	}
 
 	@Benchmark
-	public void perf6() {
+	public void perf6Hql() {
 		final EntityManager em = entityManagerFactory.createEntityManager();
 		em.getTransaction().begin();
-		final List<Author> authors = em.createQuery("from Author", Author.class).getResultList();
-		authors.forEach(author -> assertFalse(author.books.isEmpty()));
+		TestEntity entity = em.createQuery("from TestEntity where strField = :strField", TestEntity.class)
+				.setParameter("strField", "S1")
+				.getSingleResult();
+		assertEquals("ID1", entity.id);
 		em.getTransaction().commit();
 		em.close();
 	}
 
 	@Benchmark
-	public void perf6Cache() {
+	public void perf6Native() {
 		final EntityManager em = entityManagerFactory.createEntityManager();
 		em.getTransaction().begin();
-		final Author author = em.createQuery("from Author", Author.class).setMaxResults(1).getSingleResult();
-		for (int i = 0; i < 1000; i++) {
-			em.createQuery("from Book b where b.author = :author", Book.class)
-					.setParameter("author", author)
-					.setHint("org.hibernate.cacheable", true)
-					.getResultList();
-		}
+		TestEntity entity = (TestEntity) em.createNativeQuery("select * from TestEntity where strField = :strField", TestEntity.class)
+				.setParameter("strField", "S1")
+				.getSingleResult();
+		assertEquals("ID1", entity.id);
 		em.getTransaction().commit();
 		em.close();
 	}
-	
+
 	@Benchmark
-	public void perf6LargeTransaction() {
+	public void perf6Criteria() {
 		final EntityManager em = entityManagerFactory.createEntityManager();
 		em.getTransaction().begin();
-		em.setFlushMode(FlushModeType.COMMIT);
-		for (int i = 0; i < 1_000; i++) {
-			final List<Author> authors = em.createQuery("from Author", Author.class).getResultList();
-			authors.forEach(author -> assertFalse(author.books.isEmpty()));
-		}
+		CriteriaBuilder cb = em.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cq.from(TestEntity.class);
+		cq.select(cq.from(TestEntity.class));
+		cq.where(cb.equal(root.get("strField"), "S1"));
+		TestEntity entity = em.createQuery(cq).getSingleResult();
+		assertEquals("ID1", entity.id);
 		em.getTransaction().commit();
+		em.close();
 	}
 
 	public static void main(String[] args) throws RunnerException, IOException {
@@ -92,7 +89,7 @@ public class JPABenchmark {
 					.measurementIterations(3)
 					.measurementTime(TimeValue.seconds(5))
 					.threads(1)
-					.addProfiler("gc")
+					//.addProfiler("gc")
 					.forks(2)
 					.build();
 			new Runner(opt).run();
@@ -102,69 +99,19 @@ public class JPABenchmark {
 	}
 
 	public void populateData(EntityManager entityManager) {
-		final Author author = new Author();
-		author.name = "David Gourley";
+		final TestEntity entity = new TestEntity();
+		entity.id = "ID1";
+		entity.strField = "S1";
 
-		final AuthorDetails details = new AuthorDetails();
-		details.name = "Author Details";
-		details.author = author;
-		author.details = details;
-		entityManager.persist(author);
-
-		for (int i = 0; i < 5; i++) {
-			final Book book = new Book();
-			book.name = "HTTP Definitive guide " + i;
-			book.author = author;
-			entityManager.persist(book);
-			author.books.add(book);
-		}
+		entityManager.persist(entity);
 	}
 
-	@Entity(name = "Author")
-	@Table(name = "Author")
-	public static class Author {
+	@Entity(name = "TestEntity")
+	public static class TestEntity {
+
 		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
-		public Long authorId;
+		public String id;
 
-		@Column
-		public String name;
-
-		@OneToMany(fetch = FetchType.LAZY, mappedBy = "author")
-		public List<Book> books = new ArrayList<>();
-
-		@OneToOne(fetch = FetchType.EAGER, optional = false, cascade = CascadeType.ALL, orphanRemoval = true)
-		public AuthorDetails details;
-
-	}
-
-	@Entity(name = "AuthorDetails")
-	@Table(name = "AuthorDetails")
-	public static class AuthorDetails {
-		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
-		public Long detailsId;
-
-		@Column
-		public String name;
-
-		@OneToOne(fetch = FetchType.LAZY, mappedBy = "details", optional = false)
-		public Author author;
-	}
-
-	@org.hibernate.annotations.Cache(usage = org.hibernate.annotations.CacheConcurrencyStrategy.READ_WRITE)
-	@Entity(name = "Book")
-	@Table(name = "Book")
-	public static class Book {
-		@Id
-		@GeneratedValue(strategy = GenerationType.IDENTITY)
-		public Long bookId;
-
-		@Column
-		public String name;
-
-		@ManyToOne(fetch = FetchType.LAZY, optional = false)
-		@JoinColumn(name = "author_id", nullable = false)
-		public Author author;
+		public String strField;
 	}
 }
