@@ -1,0 +1,56 @@
+Find-all query
+
+6.4.4
+Benchmark                  Mode  Cnt       Score      Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   98316,283 ± 3650,644  ops/s
+JPABenchmark.perf6Hql       thrpt    6  191924,362 ± 8936,059  ops/s
+JPABenchmark.perf6Native    thrpt    6  136500,141 ± 2062,660  ops/s
+
+6.4.4 - no query plan cache
+Benchmark               Mode  Cnt      Score      Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   97792,546 ± 2358,931  ops/s
+JPABenchmark.perf6Hql       thrpt    6   73791,490 ± 6007,687  ops/s
+JPABenchmark.perf6Native    thrpt    6  125244,472 ± 1780,806  ops/s
+
+5.6.15
+Benchmark               Mode  Cnt       Score        Error  Units
+JPABenchmark.perf5Criteria  thrpt    6  172611,689 ±  3177,429  ops/s
+JPABenchmark.perf5Hql       thrpt    6  200470,754 ± 15049,369  ops/s
+JPABenchmark.perf5Native    thrpt    6  163681,072 ± 11859,261  ops/s
+
+
+====
+
+Query with where clause
+
+6.4.4
+Benchmark                    Mode  Cnt       Score       Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   60240,447 ±   683,409  ops/s
+JPABenchmark.perf6Hql       thrpt    6  155846,845 ± 14684,300  ops/s
+JPABenchmark.perf6Native    thrpt    6  117025,704 ±  5292,083  ops/s
+
+6.4.4 - no query plan cache
+Benchmark                    Mode  Cnt       Score       Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   56722,432 ±  2432,282  ops/s
+JPABenchmark.perf6Hql       thrpt    6   42312,683 ±  1098,713  ops/s
+JPABenchmark.perf6Native    thrpt    6  105701,058 ± 12398,636  ops/s
+
+6.6.0.CR1
+Benchmark                    Mode  Cnt       Score      Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   57008,528 ± 6677,619  ops/s
+JPABenchmark.perf6Hql       thrpt    6  156082,380 ± 7980,221  ops/s
+JPABenchmark.perf6Native    thrpt    6  117620,382 ± 3079,300  ops/s
+
+6.6.0-SNAPSHOT
+Benchmark                    Mode  Cnt       Score       Error  Units
+JPABenchmark.perf6Criteria  thrpt    6   56643,593 ± 11511,886  ops/s
+JPABenchmark.perf6Hql       thrpt    6  158638,091 ±  6317,847  ops/s
+JPABenchmark.perf6Native    thrpt    6  117231,195 ±  6435,346  ops/s
+
+5.6.15
+Benchmark                    Mode  Cnt       Score       Error  Units
+JPABenchmark.perf5Criteria  thrpt    6  132591,798 ±  8203,850  ops/s
+JPABenchmark.perf5Hql       thrpt    6  170513,564 ± 23052,841  ops/s
+JPABenchmark.perf5Native    thrpt    6  141943,769 ± 12964,159  ops/s
+
+
