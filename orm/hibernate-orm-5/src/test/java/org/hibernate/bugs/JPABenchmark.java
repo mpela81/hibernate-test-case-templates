@@ -23,52 +23,42 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class JPABenchmark {
 
 	private EntityManagerFactory entityManagerFactory;
+	private EntityManager em;
 
 	@Setup
 	public void setup() {
 		entityManagerFactory = Persistence.createEntityManagerFactory("templatePU");
-
-		final EntityManager em = entityManagerFactory.createEntityManager();
+		em = entityManagerFactory.createEntityManager();
 		em.getTransaction().begin();
 		em.createQuery("delete TestEntity").executeUpdate();
 		populateData(em);
 		em.getTransaction().commit();
-		em.close();
 	}
 
 	@TearDown
 	public void destroy() {
+		em.close();
 		entityManagerFactory.close();
 	}
 
 	@Benchmark
 	public void perf5Hql() {
-		final EntityManager em = entityManagerFactory.createEntityManager();
-		em.getTransaction().begin();
 		TestEntity entity = em.createQuery("from TestEntity where strField = :strField", TestEntity.class)
 				.setParameter("strField", "S1")
 				.getSingleResult();
 		assertEquals("ID1", entity.id);
-		em.getTransaction().commit();
-		em.close();
 	}
 
 	@Benchmark
 	public void perf5Native() {
-		final EntityManager em = entityManagerFactory.createEntityManager();
-		em.getTransaction().begin();
 		TestEntity entity = (TestEntity) em.createNativeQuery("select * from TestEntity where strField = :strField", TestEntity.class)
 				.setParameter("strField", "S1")
 				.getSingleResult();
 		assertEquals("ID1", entity.id);
-		em.getTransaction().commit();
-		em.close();
 	}
 
 	@Benchmark
 	public void perf5Criteria() {
-		final EntityManager em = entityManagerFactory.createEntityManager();
-		em.getTransaction().begin();
 		CriteriaBuilder cb = em.getCriteriaBuilder();
 		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
 		Root<TestEntity> root = cq.from(TestEntity.class);
@@ -76,8 +66,6 @@ public class JPABenchmark {
 		cq.where(cb.equal(root.get("strField"), "S1"));
 		TestEntity entity = em.createQuery(cq).getSingleResult();
 		assertEquals("ID1", entity.id);
-		em.getTransaction().commit();
-		em.close();
 	}
 
 	public static void main(String[] args) throws RunnerException, IOException {
