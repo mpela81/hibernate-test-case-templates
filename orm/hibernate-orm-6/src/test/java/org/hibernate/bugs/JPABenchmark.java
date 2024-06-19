@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.SessionStatistics;
+import org.hibernate.stat.Statistics;
 import org.openjdk.jmh.Main;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
@@ -37,6 +41,9 @@ public class JPABenchmark {
 
 	@TearDown
 	public void destroy() {
+		Statistics stats = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+		System.out.println("\nQuery plan cache hit: " + stats.getQueryPlanCacheHitCount() +
+				", Query plan cache miss: " + stats.getQueryPlanCacheMissCount());
 		em.close();
 		entityManagerFactory.close();
 	}
