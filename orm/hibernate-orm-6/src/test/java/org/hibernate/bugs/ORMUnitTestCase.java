@@ -15,6 +15,8 @@
  */
 package org.hibernate.bugs;
 
+import jakarta.persistence.Convert;
+import jakarta.persistence.Id;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
@@ -23,6 +25,8 @@ import org.hibernate.Transaction;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
+import org.hibernate.transform.AliasToBeanResultTransformer;
+import org.hibernate.type.NumericBooleanConverter;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -70,20 +74,58 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 		configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
 	}
 
-	// Add your tests, using standard JUnit.
 	@Test
-	public void hhh123Test() {
-		// BaseCoreFunctionalTestCase automatically creates the SessionFactory and provides the Session.
+	@SuppressWarnings("deprecation")
+	public void hhhTestTransformer() {
 		prepareDatabase();
 
 		try (Session s = openSession()) {
-			CriteriaBuilder cb = s.getCriteriaBuilder();
-			CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
-			Root<TestEntity> root = cq.from(TestEntity.class);
-			cq.where(cb.equal(root.get("id"), "ID1"));
+			TestDTO result = s.createNativeQuery("select id, strField, boolField from TEST_ENTITY where id = ?1", TestDTO.class)
+					.setParameter(1, "ID1")
+					.addScalar("id")
+					.addScalar("strField")
+					.addScalar("boolField", Boolean.class)
+					.setTupleTransformer(new AliasToBeanResultTransformer<>(TestDTO.class))
+					.getSingleResult();
 
-			List<TestEntity> results = s.createQuery(cq).getResultList();
-			Assert.assertEquals(1, results.size());
+			Assert.assertNotNull(result);
+			Assert.assertEquals("ID1", result.id);
+			Assert.assertEquals("S1", result.strField);
+			Assert.assertTrue(result.boolField);
+		}
+	}
+
+	@Test
+	public void hhhTestConstructor() {
+		prepareDatabase();
+
+		try (Session s = openSession()) {
+			TestDTO result = s.createNativeQuery("select id, strField, boolField from TEST_ENTITY where id = ?1", TestDTO.class)
+					.setParameter(1, "ID1")
+					.getSingleResult();
+
+			Assert.assertNotNull(result);
+			Assert.assertEquals("ID1", result.id);
+			Assert.assertEquals("S1", result.strField);
+			Assert.assertTrue(result.boolField);
+		}
+	}
+
+	public static class TestDTO {
+		public String id;
+
+		public String strField;
+
+		@Convert(converter = NumericBooleanConverter.class)
+		public Boolean boolField;
+
+		public TestDTO() {
+		}
+
+		public TestDTO(String id, String strField, Boolean boolField) {
+			this.id = id;
+			this.strField = strField;
+			this.boolField = boolField;
 		}
 	}
 
@@ -91,12 +133,17 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 		try (Session s = openSession()) {
 			Transaction tx = s.beginTransaction();
 
+			s.createNativeMutationQuery("truncate table TEST_ENTITY").executeUpdate();
+
 			TestEntity entity = new TestEntity();
 			entity.id = "ID1";
 			entity.strField = "S1";
+			entity.intField = 1;
+			entity.boolField = true;
 			s.persist(entity);
 
 			tx.commit();
 		}
 	}
+
 }
