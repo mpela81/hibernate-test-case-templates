@@ -15,12 +15,18 @@
  */
 package org.hibernate.bugs;
 
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Root;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
+import org.junit.Assert;
 import org.junit.Test;
+
+import java.util.List;
 
 /**
  * This template demonstrates how to develop a test case for Hibernate ORM, using its built-in unit test framework.
@@ -35,10 +41,9 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 
 	// Add your entities here.
 	@Override
-	protected Class[] getAnnotatedClasses() {
+	protected Class<?>[] getAnnotatedClasses() {
 		return new Class[] {
-//				Foo.class,
-//				Bar.class
+			TestEntity.class
 		};
 	}
 
@@ -60,20 +65,38 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 	@Override
 	protected void configure(Configuration configuration) {
 		super.configure( configuration );
-
-		configuration.setProperty( AvailableSettings.SHOW_SQL, Boolean.TRUE.toString() );
-		configuration.setProperty( AvailableSettings.FORMAT_SQL, Boolean.TRUE.toString() );
-		//configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
+		configuration.setProperty( AvailableSettings.SHOW_SQL, Boolean.FALSE.toString() );
+		configuration.setProperty( AvailableSettings.FORMAT_SQL, Boolean.FALSE.toString() );
+		configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
 	}
 
 	// Add your tests, using standard JUnit.
 	@Test
-	public void hhh123Test() throws Exception {
+	public void hhh123Test() {
 		// BaseCoreFunctionalTestCase automatically creates the SessionFactory and provides the Session.
-		Session s = openSession();
-		Transaction tx = s.beginTransaction();
-		// Do stuff...
-		tx.commit();
-		s.close();
+		prepareDatabase();
+
+		try (Session s = openSession()) {
+			CriteriaBuilder cb = s.getCriteriaBuilder();
+			CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+			Root<TestEntity> root = cq.from(TestEntity.class);
+			cq.where(cb.equal(root.get("id"), "ID1"));
+
+			List<TestEntity> results = s.createQuery(cq).getResultList();
+			Assert.assertEquals(1, results.size());
+		}
+	}
+
+	private void prepareDatabase() {
+		try (Session s = openSession()) {
+			Transaction tx = s.beginTransaction();
+
+			TestEntity entity = new TestEntity();
+			entity.id = "ID1";
+			entity.strField = "S1";
+			s.persist(entity);
+
+			tx.commit();
+		}
 	}
 }
