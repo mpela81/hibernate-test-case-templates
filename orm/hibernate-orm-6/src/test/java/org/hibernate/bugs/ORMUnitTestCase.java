@@ -93,7 +93,7 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 
 			TestEntity entity = new TestEntity();
 			entity.id = "ID1";
-			entity.strField = "S1";
+			entity.stringA = "S1";
 			s.persist(entity);
 
 			tx.commit();
