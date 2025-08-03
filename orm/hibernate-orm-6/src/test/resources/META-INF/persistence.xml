@@ -26,6 +26,13 @@
 
             <property name="hibernate.max_fetch_depth" value="5"/>
 
+            <property name="hibernate.query.plan_cache_enabled" value="false"/>
+            <!-- Max number of cached plans - default: 2048 -->
+            <property name="hibernate.query.plan_cache_max_size" value="2048"/>
+            <!-- Max number of cached metadata - default: 128 -->
+            <property name="hibernate.query.plan_parameter_metadata_max_size" value="128"/>
+            <property name="hibernate.generate_statistics" value="true"/>
+
             <property name="hibernate.cache.region_prefix" value="hibernate.test"/>
             <property name="hibernate.cache.region.factory_class"
                       value="org.hibernate.testing.cache.CachingRegionFactory"/>

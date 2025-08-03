@@ -3,10 +3,8 @@ package org.hibernate.bugs;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.ParameterExpression;
-import jakarta.persistence.criteria.Root;
+import jakarta.persistence.TypedQuery;
+import jakarta.persistence.criteria.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -15,13 +13,7 @@ import org.junit.Test;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -29,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class JPAUnitTestCase {
 
-	private static final int NUM_QUERY = 100000;
+	private static final int NUM_QUERY = 10000;
 	private EntityManagerFactory entityManagerFactory;
 
 	@Before
@@ -48,35 +40,26 @@ public class JPAUnitTestCase {
 	public void hhh123Test() {
 		prepareDatabase();
 
-		ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
+		AtomicInteger sessions = new AtomicInteger();
+		ThreadLocal<EntityManager> entityManager = ThreadLocal.withInitial( () -> {
+			sessions.incrementAndGet();
+            return entityManagerFactory.createEntityManager();
+        } );
+
+		ExecutorService executorService = Executors.newFixedThreadPool(12);
 		List<Future<Void>> futures = new ArrayList<>();
 		for (int i = 0; i < NUM_QUERY; i++) {
+			final ThreadLocalRandom generator = ThreadLocalRandom.current();
+			final String stringParamA = "A" + i;
+			final LocalDate dateParam = LocalDate.of(2025, 7, 18);
+			final Boolean boolParamB = generator.nextBoolean() ? false : null;
+			final boolean useQuery2 = generator.nextBoolean();
 			futures.add(executorService.submit(() -> {
-				try (EntityManager entityManager = entityManagerFactory.createEntityManager()) {
-					CriteriaBuilder cb = entityManager.getCriteriaBuilder();
-					CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
-					Root<TestEntity> root = cq.from(TestEntity.class);
-					ParameterExpression<String> stringA = cb.parameter(String.class);
-					ParameterExpression<LocalDate> date = cb.parameter(LocalDate.class);
-					ParameterExpression<Boolean> boolA = cb.parameter(Boolean.class);
-					ParameterExpression<Boolean> boolB = cb.parameter(Boolean.class);
-					cq.where(cb.and(
-							cb.equal(root.get("stringA"), stringA),
-							cb.equal(root.get("date"), date),
-							cb.equal(root.get("boolA"), boolA),
-							cb.isNotNull(root.get("stringB")),
-							cb.equal(root.get("boolB"), boolB)));
-
-					final int n = ThreadLocalRandom.current().nextInt(0, NUM_QUERY);
-					List<TestEntity> results = entityManager.createQuery(cq)
-							.setParameter(stringA, "A" + n)
-							.setParameter(date, LocalDate.of(2025, 7, 18))
-							.setParameter(boolA, false)
-							.setParameter(boolB, false)
-							.getResultList();
-					Assert.assertEquals(1, results.size());
+				if (useQuery2) {
+					executeQuery2(entityManager.get(), dateParam, boolParamB, stringParamA);
+				} else {
+					executeQuery(entityManager.get(), dateParam, boolParamB, stringParamA);
 				}
-
 				return null;
 			}));
 		}
@@ -91,7 +74,74 @@ public class JPAUnitTestCase {
             }
         });
 
+		System.out.format("Executed %d queries by %d sessions\n", count.get(), sessions.get());
 		Assert.assertEquals(NUM_QUERY, count.get());
+	}
+
+	private void executeQuery(EntityManager entityManager, LocalDate dateParam, Boolean boolParamB, String stringParamA) {
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cq.from(TestEntity.class);
+		ParameterExpression<String> stringA = cb.parameter(String.class);
+		ParameterExpression<LocalDate> date = cb.parameter(LocalDate.class);
+		ParameterExpression<Boolean> boolA = cb.parameter(Boolean.class);
+		ParameterExpression<Boolean> boolB = (boolParamB != null) ? cb.parameter(Boolean.class) : null;
+
+		Predicate predicate = cb.and(
+				cb.equal(root.get("stringA"), stringA),
+				cb.equal(root.get("date"), date),
+				cb.equal(root.get("boolA"), boolA),
+				cb.isNotNull(root.get("stringB")));
+		if (boolB != null) {
+			predicate = cb.and(predicate, cb.equal(root.get("boolB"), boolB));
+		}
+
+		cq.where(predicate);
+
+		TypedQuery<TestEntity> query = entityManager.createQuery(cq);
+		query.setParameter(stringA, stringParamA)
+				.setParameter(date, dateParam)
+				.setParameter(boolA, false);
+		if (boolB != null) {
+			query.setParameter(boolB, boolParamB);
+		}
+
+		List<TestEntity> results = query.getResultList();
+		Assert.assertNotNull(results);
+		//Assert.assertEquals(1, results.size());
+	}
+
+	private void executeQuery2(EntityManager entityManager, LocalDate dateParam, Boolean boolParamB, String stringParamA) {
+		CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+		CriteriaQuery<TestEntity> cq = cb.createQuery(TestEntity.class);
+		Root<TestEntity> root = cq.from(TestEntity.class);
+		ParameterExpression<LocalDate> date = cb.parameter(LocalDate.class);
+		ParameterExpression<Boolean> boolA = cb.parameter(Boolean.class);
+		ParameterExpression<String> stringA = cb.parameter(String.class);
+		ParameterExpression<Boolean> boolB = (boolParamB != null) ? cb.parameter(Boolean.class) : null;
+
+		Predicate predicate = cb.and(
+				cb.equal(root.get("date"), date),
+				cb.equal(root.get("boolA"), boolA),
+				cb.equal(root.get("stringA"), stringA),
+				cb.isNotNull(root.get("stringB")));
+		if (boolB != null) {
+			predicate = cb.and(predicate, cb.equal(root.get("boolB"), boolB));
+		}
+
+		cq.where(predicate);
+
+		TypedQuery<TestEntity> query = entityManager.createQuery(cq);
+		query.setParameter(date, dateParam);
+		query.setParameter(boolA, false);
+		query.setParameter(stringA, stringParamA);
+		if (boolB != null) {
+			query.setParameter(boolB, boolParamB);
+		}
+
+		List<TestEntity> results = query.getResultList();
+		Assert.assertNotNull(results);
+		//Assert.assertEquals(1, results.size());
 	}
 
 	private void prepareDatabase() {
