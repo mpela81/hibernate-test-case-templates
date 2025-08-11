@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class JPAUnitTestCase {
 
-	private static final int NUM_QUERY = 10000;
+	private static final int NUM_QUERY = 30000;
 	private EntityManagerFactory entityManagerFactory;
 
 	@Before
@@ -54,11 +54,17 @@ public class JPAUnitTestCase {
 			final LocalDate dateParam = LocalDate.of(2025, 7, 18);
 			final Boolean boolParamB = generator.nextBoolean() ? false : null;
 			final boolean useQuery2 = generator.nextBoolean();
+			final boolean closeSession = generator.nextInt(100) < 10;
 			futures.add(executorService.submit(() -> {
+				EntityManager currentEm = entityManager.get();
 				if (useQuery2) {
-					executeQuery2(entityManager.get(), dateParam, boolParamB, stringParamA);
+					executeQuery2(currentEm, dateParam, boolParamB, stringParamA);
 				} else {
-					executeQuery(entityManager.get(), dateParam, boolParamB, stringParamA);
+					executeQuery(currentEm, dateParam, boolParamB, stringParamA);
+				}
+				if (closeSession) {
+					currentEm.close();
+					entityManager.remove();
 				}
 				return null;
 			}));
